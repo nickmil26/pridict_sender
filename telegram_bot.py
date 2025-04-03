@@ -1,6 +1,7 @@
 import os
 from flask import Flask, request, jsonify, send_from_directory
-from telethon.sync import TelegramClient  # Note: using sync version
+from telethon.sync import TelegramClient  # Using synchronous client
+from telethon import events
 
 app = Flask(__name__)
 
@@ -8,14 +9,24 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Telegram credentials
-API_ID = int(os.getenv('API_ID'))  # Required from my.telegram.org
-API_HASH = os.getenv('API_HASH')   # Required from my.telegram.org
-BOT_TOKEN = os.getenv('BOT_TOKEN') # From @BotFather
+# Telegram credentials - ALL required
+API_ID = int(os.getenv('API_ID'))        # From my.telegram.org
+API_HASH = os.getenv('API_HASH')         # From my.telegram.org
+BOT_TOKEN = os.getenv('BOT_TOKEN')       # From @BotFather
 CHANNEL_USERNAME = os.getenv('CHANNEL_USERNAME', 'testsub01')
 
-# Initialize bot client (synchronous)
-bot = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+print("API_ID:", os.getenv('API_ID'))
+   print("BOT_TOKEN present:", bool(os.getenv('BOT_TOKEN')))
+
+
+
+# Initialize bot client synchronously
+def init_bot():
+    bot = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+    print("Bot initialized successfully")
+    return bot
+
+bot = init_bot()
 
 @app.route('/')
 def index():
@@ -30,16 +41,17 @@ def upload_file():
     if file.filename == '':
         return jsonify({'success': False, 'error': 'No selected file'}), 400
     
+    file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     try:
-        # Save file temporarily
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
+        # Save file
         file.save(file_path)
         
         # Synchronous file sending
-        message = bot.send_file(CHANNEL_USERNAME, file_path)
-        
-        # Clean up
-        os.remove(file_path)
+        message = bot.send_file(
+            entity=CHANNEL_USERNAME,
+            file=file_path,
+            caption="New betting card"
+        )
         
         return jsonify({
             'success': True,
@@ -47,12 +59,14 @@ def upload_file():
             'message_id': message.id
         })
     except Exception as e:
-        if os.path.exists(file_path):
-            os.remove(file_path)
         return jsonify({
             'success': False,
             'error': str(e)
         }), 500
+    finally:
+        # Clean up file
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
