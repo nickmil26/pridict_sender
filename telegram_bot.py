@@ -16,7 +16,7 @@ BOT_TOKEN = os.getenv('BOT_TOKEN')       # From @BotFather
 CHANNEL_USERNAME = os.getenv('CHANNEL_USERNAME', 'testsub01')
 
 print("API_ID:", os.getenv('API_ID'))
-   print("BOT_TOKEN present:", bool(os.getenv('BOT_TOKEN')))
+print("BOT_TOKEN present:", bool(os.getenv('BOT_TOKEN')))
 
 
 
