@@ -8,12 +8,18 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Bot setup
+# Telegram credentials - ALL required even for bot tokens
+API_ID = int(os.getenv('22886360', 12345))  # Get from my.telegram.org
+API_HASH = os.getenv('API_HASH', '43e833738a56a88e5642c24e268553e3')
 BOT_TOKEN = os.getenv('BOT_TOKEN')  # From @BotFather
 CHANNEL_USERNAME = os.getenv('CHANNEL_USERNAME', 'testsub01')
 
-# Initialize bot
-bot = TelegramClient('bot', 0, 0).start(bot_token=BOT_TOKEN)
+# Initialize bot with proper credentials
+try:
+    bot = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+except Exception as e:
+    print(f"Failed to initialize bot: {e}")
+    raise
 
 @app.route('/')
 def index():
@@ -29,15 +35,12 @@ def upload_file():
         return jsonify({'success': False, 'error': 'No selected file'}), 400
     
     try:
-        # Save file temporarily
-        file_path = os.path.join(UPLOAD_FOLDER, 'betting_card.png')
+        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
         
         # Send to Telegram
         message = bot.send_file(CHANNEL_USERNAME, file_path)
-        
-        # Clean up
-        os.remove(file_path)
+        os.remove(file_path)  # Clean up
         
         return jsonify({
             'success': True,
