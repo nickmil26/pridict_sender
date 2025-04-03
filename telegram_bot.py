@@ -1,6 +1,6 @@
 import os
 from flask import Flask, request, jsonify, send_from_directory
-from telethon.sync import TelegramClient
+from telethon.sync import TelegramClient  # Note: using sync version
 
 app = Flask(__name__)
 
@@ -8,18 +8,14 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Telegram credentials - ALL required even for bot tokens
-API_ID = int(os.getenv('API_ID', 22886360))  # Get from my.telegram.org
-API_HASH = os.getenv('API_HASH', '43e833738a56a88e5642c24e268553e3')
-BOT_TOKEN = os.getenv('BOT_TOKEN')  # From @BotFather
+# Telegram credentials
+API_ID = int(os.getenv('API_ID'))  # Required from my.telegram.org
+API_HASH = os.getenv('API_HASH')   # Required from my.telegram.org
+BOT_TOKEN = os.getenv('BOT_TOKEN') # From @BotFather
 CHANNEL_USERNAME = os.getenv('CHANNEL_USERNAME', 'testsub01')
 
-# Initialize bot with proper credentials
-try:
-    bot = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
-except Exception as e:
-    print(f"Failed to initialize bot: {e}")
-    raise
+# Initialize bot client (synchronous)
+bot = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
 @app.route('/')
 def index():
@@ -35,12 +31,15 @@ def upload_file():
         return jsonify({'success': False, 'error': 'No selected file'}), 400
     
     try:
+        # Save file temporarily
         file_path = os.path.join(UPLOAD_FOLDER, file.filename)
         file.save(file_path)
         
-        # Send to Telegram
+        # Synchronous file sending
         message = bot.send_file(CHANNEL_USERNAME, file_path)
-        os.remove(file_path)  # Clean up
+        
+        # Clean up
+        os.remove(file_path)
         
         return jsonify({
             'success': True,
@@ -48,6 +47,8 @@ def upload_file():
             'message_id': message.id
         })
     except Exception as e:
+        if os.path.exists(file_path):
+            os.remove(file_path)
         return jsonify({
             'success': False,
             'error': str(e)
