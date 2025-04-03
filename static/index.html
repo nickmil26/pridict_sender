@@ -185,55 +185,45 @@
             document.getElementById("bet-advice").innerText = document.getElementById("bet-advice-input").value || "";
         }
 
-        function downloadAndSend() {
-    html2canvas(document.querySelector(".card-box")).then(canvas => {
-        let imageData = canvas.toDataURL("image/png");
-        
-        // Download first
-        let link = document.createElement("a");
-        link.href = imageData;
-        link.download = "betting_card.png";
-        link.click();
+        async function downloadAndSend() {
+    const messageElement = document.getElementById("message");
+    messageElement.innerText = "Processing...";
+    messageElement.style.color = "white";
 
-        // Then send to server
-        fetch(imageData)
-        .then(res => res.blob())
-        .then(blob => {
-            let formData = new FormData();
-            formData.append("image", blob, "betting_card.png");
+    try {
+        // Generate image from canvas
+        const canvas = await html2canvas(document.querySelector(".card-box"));
+        const imageData = canvas.toDataURL("image/png");
 
-            document.getElementById("message").innerText = "Sending to Telegram...";
-            document.getElementById("message").style.color = "white";
+        // Download image
+        const downloadLink = document.createElement("a");
+        downloadLink.href = imageData;
+        downloadLink.download = "betting_card.png";
+        downloadLink.click();
 
-            fetch("/upload", {
-                method: "POST",
-                body: formData
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(err => Promise.reject(err));
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    document.getElementById("message").innerText = "✅ " + data.message;
-                    document.getElementById("message").style.color = "lightgreen";
-                } else {
-                    throw new Error(data.error || "Unknown error");
-                }
-            })
-            .catch(error => {
-                document.getElementById("message").innerText = "❌ Error: " + error.message;
-                document.getElementById("message").style.color = "red";
-                console.error("Upload failed:", error);
-            });
-        })
-        .catch(error => {
-            document.getElementById("message").innerText = "❌ Failed to process image";
-            document.getElementById("message").style.color = "red";
+        // Convert to blob and send
+        const blob = await (await fetch(imageData)).blob();
+        const formData = new FormData();
+        formData.append("image", blob, "betting_card.png");
+
+        const response = await fetch("/upload", {
+            method: "POST",
+            body: formData
         });
-    });
+
+        const result = await response.json();
+
+        if (!result.success) {
+            throw new Error(result.message || "Unknown error occurred");
+        }
+
+        messageElement.innerText = "✅ " + result.message;
+        messageElement.style.color = "lightgreen";
+    } catch (error) {
+        console.error("Upload error:", error);
+        messageElement.innerText = "❌ " + (error.message || "Failed to send image");
+        messageElement.style.color = "red";
+    }
 }
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
