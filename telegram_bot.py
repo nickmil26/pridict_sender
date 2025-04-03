@@ -9,7 +9,7 @@ UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Telegram credentials - ALL required even for bot tokens
-API_ID = int(os.getenv('22886360', 12345))  # Get from my.telegram.org
+API_ID = int(os.getenv('API_ID', 22886360))  # Get from my.telegram.org
 API_HASH = os.getenv('API_HASH', '43e833738a56a88e5642c24e268553e3')
 BOT_TOKEN = os.getenv('BOT_TOKEN')  # From @BotFather
 CHANNEL_USERNAME = os.getenv('CHANNEL_USERNAME', 'testsub01')
