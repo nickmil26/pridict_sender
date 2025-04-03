@@ -1,7 +1,7 @@
 import os
 from flask import Flask, request, jsonify, send_from_directory
-from telethon.sync import TelegramClient  # Using synchronous client
-from telethon import events
+from telethon.sync import TelegramClient
+from telethon.sessions import StringSession  # For in-memory session
 
 app = Flask(__name__)
 
@@ -10,23 +10,19 @@ UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Telegram credentials - ALL required
-API_ID = int(os.getenv('API_ID'))        # From my.telegram.org
-API_HASH = os.getenv('API_HASH')         # From my.telegram.org
-BOT_TOKEN = os.getenv('BOT_TOKEN')       # From @BotFather
+API_ID = int(os.getenv('API_ID'))        # From my.telegram.org (required)
+API_HASH = os.getenv('API_HASH')         # From my.telegram.org (required)
+BOT_TOKEN = os.getenv('BOT_TOKEN')       # From @BotFather (required)
 CHANNEL_USERNAME = os.getenv('CHANNEL_USERNAME', 'testsub01')
 
-print("API_ID:", os.getenv('API_ID'))
-print("BOT_TOKEN present:", bool(os.getenv('BOT_TOKEN')))
-
-
-
-# Initialize bot client synchronously
-def init_bot():
-    bot = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
-    print("Bot initialized successfully")
-    return bot
-
-bot = init_bot()
+# Initialize bot client ONCE at startup
+bot = None
+try:
+    bot = TelegramClient(StringSession(), API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+    print("✅ Bot initialized successfully")
+except Exception as e:
+    print(f"❌ Failed to initialize bot: {e}")
+    raise
 
 @app.route('/')
 def index():
@@ -34,6 +30,9 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    if not bot:
+        return jsonify({'success': False, 'error': 'Bot not initialized'}), 500
+        
     if 'image' not in request.files:
         return jsonify({'success': False, 'error': 'No file uploaded'}), 400
     
@@ -46,7 +45,7 @@ def upload_file():
         # Save file
         file.save(file_path)
         
-        # Synchronous file sending
+        # SYNC operation - no async/await
         message = bot.send_file(
             entity=CHANNEL_USERNAME,
             file=file_path,
@@ -70,4 +69,4 @@ def upload_file():
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, threaded=True)
