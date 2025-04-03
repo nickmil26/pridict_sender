@@ -186,29 +186,25 @@
         }
 
         function downloadAndSend() {
-    html2canvas(document.querySelector(".card-box"), {
-        backgroundColor: null,
-        scale: 2
-    }).then(canvas => {
+    html2canvas(document.querySelector(".card-box")).then(canvas => {
         let imageData = canvas.toDataURL("image/png");
-
-        // Download the image
+        
+        // Download first
         let link = document.createElement("a");
         link.href = imageData;
         link.download = "betting_card.png";
         link.click();
 
-        // Convert to blob and send
+        // Then send to server
         fetch(imageData)
         .then(res => res.blob())
         .then(blob => {
             let formData = new FormData();
             formData.append("image", blob, "betting_card.png");
 
-            document.getElementById("message").innerText = "Sending image to Telegram...";
+            document.getElementById("message").innerText = "Sending to Telegram...";
             document.getElementById("message").style.color = "white";
 
-            // Send to server
             fetch("/upload", {
                 method: "POST",
                 body: formData
@@ -221,30 +217,22 @@
             })
             .then(data => {
                 if (data.success) {
-                    document.getElementById("message").innerText = "✅ " + (data.message || "Image sent successfully!");
+                    document.getElementById("message").innerText = "✅ " + data.message;
                     document.getElementById("message").style.color = "lightgreen";
                 } else {
-                    document.getElementById("message").innerText = "❌ Error: " + (data.error || "Unknown error");
-                    document.getElementById("message").style.color = "red";
+                    throw new Error(data.error || "Unknown error");
                 }
             })
             .catch(error => {
-                let errorMsg = error.error || error.message || "Failed to send image";
-                document.getElementById("message").innerText = "❌ " + errorMsg;
+                document.getElementById("message").innerText = "❌ Error: " + error.message;
                 document.getElementById("message").style.color = "red";
-                console.error("Error:", error);
+                console.error("Upload failed:", error);
             });
         })
         .catch(error => {
             document.getElementById("message").innerText = "❌ Failed to process image";
             document.getElementById("message").style.color = "red";
-            console.error("Image processing error:", error);
         });
-    })
-    .catch(error => {
-        document.getElementById("message").innerText = "❌ Failed to generate image";
-        document.getElementById("message").style.color = "red";
-        console.error("Canvas error:", error);
     });
 }
     </script>
