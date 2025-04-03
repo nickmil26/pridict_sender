@@ -37,23 +37,30 @@ def index():
 @app.route('/upload', methods=['POST'])
 async def upload_file():
     if 'image' not in request.files:
-        return jsonify({'error': 'No file uploaded'}), 400
+        return jsonify({'success': False, 'error': 'No file uploaded'}), 400
     
     file = request.files['image']
     if file.filename == '':
-        return jsonify({'error': 'No selected file'}), 400
+        return jsonify({'success': False, 'error': 'No selected file'}), 400
     
-    # Save the file
-    file_path = os.path.join(UPLOAD_FOLDER, 'betting_card.png')
-    file.save(file_path)
-    
-    # Process the image with Telegram
     try:
+        # Save the file
+        file_path = os.path.join(UPLOAD_FOLDER, 'betting_card.png')
+        file.save(file_path)
+        
+        # Process the image with Telegram
         message_id = await process_telegram(file_path)
-        return jsonify({'success': True, 'message_id': message_id})
+        return jsonify({
+            'success': True,
+            'message': 'Image sent successfully',
+            'message_id': message_id
+        })
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+        
 async def process_telegram(image_path):
     clients = await authenticate_accounts()
     if not clients:
