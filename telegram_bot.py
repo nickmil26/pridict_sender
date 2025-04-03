@@ -1,10 +1,10 @@
 import os
 import random
-import pandas as pd
 from flask import Flask, request, jsonify, send_from_directory
 from telethon import TelegramClient
 from telethon.tl.functions.messages import SendReactionRequest
 from telethon.tl.types import ReactionEmoji
+import csv
 
 app = Flask(__name__)
 
@@ -21,11 +21,15 @@ channel_username = os.getenv('CHANNEL_USERNAME', 'testsub01')
 reactions = ['👍', '❤️', '🔥', '🎉', '👏']
 
 # Load accounts from CSV - consider moving to database or environment variables
-try:
-    accounts = pd.read_csv('accounts.csv')
-except FileNotFoundError:
-    accounts = pd.DataFrame(columns=['phone_number', 'api_id', 'api_hash'])
+# Replace pandas CSV reading with:
 
+def load_accounts():
+    accounts = []
+    with open('accounts.csv', mode='r') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            accounts.append(row)
+    return accounts
 @app.route('/')
 def index():
     return send_from_directory('static', 'index.html')
