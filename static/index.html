@@ -186,44 +186,67 @@
         }
 
         function downloadAndSend() {
-            html2canvas(document.querySelector(".card-box"), {
-                backgroundColor: null,
-                scale: 2
-            }).then(canvas => {
-                let imageData = canvas.toDataURL("image/png");
+    html2canvas(document.querySelector(".card-box"), {
+        backgroundColor: null,
+        scale: 2
+    }).then(canvas => {
+        let imageData = canvas.toDataURL("image/png");
 
-                let link = document.createElement("a");
-                link.href = imageData;
-                link.download = "betting_card.png";
-                link.click();
+        // Download the image
+        let link = document.createElement("a");
+        link.href = imageData;
+        link.download = "betting_card.png";
+        link.click();
 
-                fetch(imageData)
-                .then(res => res.blob())
-                .then(blob => {
-                    let formData = new FormData();
-                    formData.append("image", blob, "betting_card.png");
+        // Convert to blob and send
+        fetch(imageData)
+        .then(res => res.blob())
+        .then(blob => {
+            let formData = new FormData();
+            formData.append("image", blob, "betting_card.png");
 
-                    document.getElementById("message").innerText = "Sending image to Telegram...";
+            document.getElementById("message").innerText = "Sending image to Telegram...";
+            document.getElementById("message").style.color = "white";
 
-                    // Send to current domain
-                    fetch("/upload", {
-                        method: "POST",
-                        body: formData
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            document.getElementById("message").innerText = "Image sent successfully!";
-                        } else {
-                            document.getElementById("message").innerText = "Error: " + (data.error || "Unknown error");
-                        }
-                    })
-                    .catch(error => {
-                        document.getElementById("message").innerText = "Failed to send image: " + error.message;
-                    });
-                });
+            // Send to server
+            fetch("/upload", {
+                method: "POST",
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    return response.json().then(err => Promise.reject(err));
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    document.getElementById("message").innerText = "✅ " + (data.message || "Image sent successfully!");
+                    document.getElementById("message").style.color = "lightgreen";
+                } else {
+                    document.getElementById("message").innerText = "❌ Error: " + (data.error || "Unknown error");
+                    document.getElementById("message").style.color = "red";
+                }
+            })
+            .catch(error => {
+                let errorMsg = error.error || error.message || "Failed to send image";
+                document.getElementById("message").innerText = "❌ " + errorMsg;
+                document.getElementById("message").style.color = "red";
+                console.error("Error:", error);
             });
-        }
+        })
+        .catch(error => {
+            document.getElementById("message").innerText = "❌ Failed to process image";
+            document.getElementById("message").style.color = "red";
+            console.error("Image processing error:", error);
+        });
+    })
+    .catch(error => {
+        document.getElementById("message").innerText = "❌ Failed to generate image";
+        document.getElementById("message").style.color = "red";
+        console.error("Canvas error:", error);
+    });
+}
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </body>
