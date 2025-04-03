@@ -9,67 +9,68 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'temp_uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Telegram credentials - set these in Render
-API_ID = int(os.getenv('API_ID', 12345))          # Required
-API_HASH = os.getenv('API_HASH', 'your_api_hash') # Required
-BOT_TOKEN = os.getenv('BOT_TOKEN')                # Required
-CHANNEL = os.getenv('CHANNEL_USERNAME')           # Required
+# Get environment variables
+def get_env(var_name, default=None, required=True):
+    value = os.getenv(var_name, default)
+    if required and not value:
+        raise ValueError(f"Missing required environment variable: {var_name}")
+    return value
 
-# Initialize bot connection
+try:
+    API_ID = int(get_env('API_ID'))
+    API_HASH = get_env('API_HASH')
+    BOT_TOKEN = get_env('BOT_TOKEN')
+    CHANNEL = get_env('CHANNEL_USERNAME')
+except ValueError as e:
+    print(f"❌ Configuration error: {e}")
+    raise
+
+# Initialize Telegram client
 try:
     bot = TelegramClient(StringSession(), API_ID, API_HASH).start(bot_token=BOT_TOKEN)
     print("✅ Bot connected successfully")
 except Exception as e:
-    print(f"❌ Bot connection failed: {e}")
+    print(f"❌ Failed to initialize bot: {e}")
     bot = None
 
 @app.route('/')
-def home():
-    """Serve the HTML interface"""
+def serve_frontend():
+    """Serve the static HTML frontend"""
     return send_from_directory('static', 'index.html')
 
 @app.route('/upload', methods=['POST'])
-def upload_image():
-    """Handle image upload to Telegram"""
-    # Check if bot is connected
+def handle_upload():
+    """Process image upload to Telegram"""
     if not bot or not bot.is_connected():
-        return jsonify(success=False, error="Bot not connected"), 500
+        return json_response(False, "Bot not connected", 500)
 
-    # Validate file upload
     if 'image' not in request.files:
-        return jsonify(success=False, error="No file uploaded"), 400
-    
+        return json_response(False, "No file uploaded", 400)
+
     file = request.files['image']
     if not file or file.filename == '':
-        return jsonify(success=False, error="Invalid file"), 400
+        return json_response(False, "Invalid file", 400)
 
-    # Process file upload
     file_path = os.path.join(UPLOAD_FOLDER, file.filename)
     try:
         file.save(file_path)
-        
-        # Send to Telegram
-        message = bot.send_file(
-            entity=CHANNEL,
-            file=file_path,
-            caption="New Betting Card"
-        )
-        
-        return jsonify(
-            success=True,
-            message="Image sent successfully",
-            message_id=message.id
-        )
-        
+        message = bot.send_file(CHANNEL, file_path)
+        return json_response(True, "Image sent successfully", data={'message_id': message.id})
     except Exception as e:
-        # Ensure proper JSON error response
-        return jsonify(success=False, error=f"Telegram error: {str(e)}"), 500
-        
+        return json_response(False, f"Upload failed: {str(e)}", 500)
     finally:
-        # Clean up temp file
         if os.path.exists(file_path):
             os.remove(file_path)
 
+def json_response(success, message, status=200, data=None):
+    """Standardized JSON response format"""
+    response = {
+        'success': success,
+        'message': message,
+        'data': data or {}
+    }
+    return jsonify(response), status
+
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 5000))
+    port = int(get_env('PORT', '5000'))
     app.run(host='0.0.0.0', port=port)
